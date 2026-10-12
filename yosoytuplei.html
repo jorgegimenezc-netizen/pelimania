@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-cinema-dark text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yo Soy Tu Peli - Juego de Mesa Cinéfilo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            cinzel: ['Cinzel', 'serif'],
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            gold: {
+              300: '#fde047',
+              400: '#facc15',
+              500: '#eab308',
+              600: '#ca8a04',
+            },
+            cinema: {
+              dark: '#0b0d12',
+              card: '#131722',
+              border: '#232938',
+              red: '#e50914',
+            }
+          },
+          boxShadow: {
+            'neon-gold': '0 0 20px rgba(234, 179, 8, 0.35)',
+            'neon-red': '0 0 20px rgba(229, 9, 20, 0.4)',
+            'card-glow': '0 10px 30px -10px rgba(0, 0, 0, 0.8)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b0d12;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #232938;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #ca8a04;
+    }
+
+    /* 3D Dice Styles */
+    .dice-container {
+      perspective: 1000px;
+      width: 110px;
+      height: 110px;
+      margin: 0 auto;
+    }
+
+    .cube {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .cube-face {
+      position: absolute;
+      width: 110px;
+      height: 110px;
+      background: linear-gradient(135deg, #1f2430 0%, #0d0f17 100%);
+      border: 2px solid #ca8a04;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 0 15px rgba(234, 179, 8, 0.2);
+      backface-visibility: hidden;
+      user-select: none;
+      text-align: center;
+      padding: 0.5rem;
+    }
+
+    /* Cube Face Rotations */
+    .face-1 { transform: rotateY(0deg) translateZ(55px); }
+    .face-2 { transform: rotateY(90deg) translateZ(55px); }
+    .face-3 { transform: rotateY(180deg) translateZ(55px); }
+    .face-4 { transform: rotateY(-90deg) translateZ(55px); }
+    .face-5 { transform: rotateX(90deg) translateZ(55px); }
+    .face-6 { transform: rotateX(-90deg) translateZ(55px); }
+
+    /* Final face view transforms */
+    .cube.show-1 { transform: translateZ(-55px) rotateY(0deg); }
+    .cube.show-2 { transform: translateZ(-55px) rotateY(-90deg); }
+    .cube.show-3 { transform: translateZ(-55px) rotateY(-180deg); }
+    .cube.show-4 { transform: translateZ(-55px) rotateY(90deg); }
+    .cube.show-5 { transform: translateZ(-55px) rotateX(-90deg); }
+    .cube.show-6 { transform: translateZ(-55px) rotateX(90deg); }
+
+    /* Filmstrip background decoration */
+    .filmstrip-border {
+      background-image: radial-gradient(#1f2430 30%, transparent 31%);
+      background-size: 16px 16px;
+    }
+
+    /* Glow pulse effect */
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(234, 179, 8, 0.2); }
+      50% { box-shadow: 0 0 30px rgba(234, 179, 8, 0.6); }
+    }
+    .active-glow {
+      animation: pulseGlow 2s infinite;
+    }
+
+    /* Flip Card Styles */
+    .flip-container {
+      perspective: 1000px;
+    }
+    .flip-card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.8s;
+      transform-style: preserve-3d;
+    }
+    .flip-container.revealed .flip-card-inner {
+      transform: rotateY(180deg);
+    }
+    .flip-front, .flip-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 1rem;
+    }
+    .flip-back {
+      transform: rotateY(180deg);
+    }
+  </style>
+</head>
+
+<body class="h-full flex flex-col font-sans selection:bg-gold-500 selection:text-black">
+
+  <header class="bg-cinema-dark border-b border-cinema-border sticky top-0 z-30 px-4 py-3 shadow-lg">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3 text-gold-400">
+        <i class="fa-solid fa-clapperboard text-3xl"></i>
+        <h1 class="font-cinzel text-2xl md:text-3xl font-black uppercase tracking-wider">Yo Soy Tu Peli</h1>
+      </div>
+      <div class="hidden md:flex gap-4 text-sm font-semibold text-slate-400">
+        <span class="flex items-center gap-2"><i class="fa-solid fa-dice"></i> Lanza</span>
+        <span class="flex items-center gap-2"><i class="fa-solid fa-lightbulb"></i> Adivina</span>
+        <span class="flex items-center gap-2"><i class="fa-solid fa-trophy"></i> Gana</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-6xl w-full mx-auto p-4 md:p-8 grid grid-cols-1 md:grid-cols-12 gap-8 items-start relative">
+    
+    <!-- Background Decoration -->
+    <div class="absolute inset-0 z-0 opacity-10 pointer-events-none filmstrip-border hidden md:block w-8 h-full left-4"></div>
+    <div class="absolute inset-0 z-0 opacity-10 pointer-events-none filmstrip-border hidden md:block w-8 h-full right-4"></div>
+
+    <section class="md:col-span-4 lg:col-span-3 flex flex-col items-center justify-center bg-cinema-card border border-cinema-border rounded-2xl p-6 shadow-card-glow relative z-10">
+      <h2 class="text-xl font-cinzel font-bold text-slate-200 mb-8 text-center border-b border-cinema-border pb-2 w-full">El Dado de la Suerte</h2>
+      
+      <div class="dice-container mb-10 active-glow rounded-xl" id="diceContainer">
+        <div class="cube show-1" id="cube">
+          <!-- Cara 1: Test -->
+          <div class="cube-face face-1">
+            <i class="fa-solid fa-list-check text-3xl text-gold-400 mb-1"></i>
+            <span class="text-[10px] font-bold uppercase tracking-wider">Test</span>
+            <span class="text-xs text-slate-400 font-bold">1</span>
+          </div>
+          <!-- Cara 2: Frase -->
+          <div class="cube-face face-2">
+            <i class="fa-solid fa-quote-right text-3xl text-gold-400 mb-1"></i>
+            <span class="text-[10px] font-bold uppercase tracking-wider">Frase</span>
+            <span class="text-xs text-slate-400 font-bold">2</span>
+          </div>
+          <!-- Cara 3: Batalla -->
+          <div class="cube-face face-3">
+            <i class="fa-solid fa-bolt text-3xl text-gold-400 mb-1"></i>
+            <span class="text-[10px] font-bold uppercase tracking-wider">Batalla</span>
+            <span class="text-xs text-slate-400 font-bold">3</span>
+          </div>
+          <!-- Cara 4: Mímica -->
+          <div class="cube-face face-4">
+            <i class="fa-solid fa-person-rays text-3xl text-gold-400 mb-1"></i>
+            <span class="text-[10px] font-bold uppercase tracking-wider">Mímica</span>
+            <span class="text-xs text-slate-400 font-bold">4</span>
+          </div>
+          <!-- Cara 5: Emojis -->
+          <div class="cube-face face-5">
+            <i class="fa-solid fa-masks-theater text-3xl text-gold-400 mb-1"></i>
+            <span class="text-[10px] font-bold uppercase tracking-wider">Emojis</span>
+            <span class="text-xs text-slate-400 font-bold">5</span>
+          </div>
+          <!-- Cara 6: Tabú -->
+          <div class="cube-face face-6">
+            <i class="fa-solid fa-comment-slash text-3xl text-gold-400 mb-1"></i>
+            <span class="text-[10px] font-bold uppercase tracking-wider">Tabú</span>
+            <span class="text-xs text-slate-400 font-bold">6</span>
+          </div>
+        </div>
+      </div>
+
+      <button id="rollBtn" onclick="rollDice()" class="w-full bg-gold-500 hover:bg-gold-400 text-cinema-dark font-bold text-lg py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-neon-gold flex justify-center items-center gap-2">
+        <i class="fa-solid fa-dice"></i> Tirar Dado
+      </button>
+
+      <!-- Category Legend -->
+      <div class="mt-8 w-full text-xs text-slate-400 grid grid-cols-2 gap-2">
+        <div class="flex items-center gap-2"><span class="text-gold-400 font-bold">1</span> Test</div>
+        <div class="flex items-center gap-2"><span class="text-gold-400 font-bold">2</span> Frase</div>
+        <div class="flex items-center gap-2"><span class="text-gold-400 font-bold">3</span> Batalla</div>
+        <div class="flex items-center gap-2"><span class="text-gold-400 font-bold">4</span> Mímica</div>
+        <div class="flex items-center gap-2"><span class="text-gold-400 font-bold">5</span> Emojis</div>
+        <div class="flex items-center gap-2"><span class="text-gold-400 font-bold">6</span> Tabú</div>
+      </div>
+    </section>
+
+    <section class="md:col-span-8 lg:col-span-9 relative z-10 flex flex-col h-[500px] md:h-[600px]">
+      
+      <!-- Flip Container -->
+      <div id="cardContainer" class="flip-container w-full h-full opacity-50 transition-opacity duration-500 pointer-events-none">
+        <div class="flip-card-inner">
+          
+          <!-- Front of Card: Clue -->
+          <div class="flip-front bg-cinema-card border border-cinema-border rounded-2xl shadow-card-glow flex flex-col items-center justify-center p-8 text-center overflow-hidden relative">
+            <div class="absolute top-0 w-full h-2 bg-gradient-to-r from-transparent via-gold-500 to-transparent opacity-50"></div>
+            
+            <div id="idleState" class="block">
+              <i class="fa-solid fa-film text-6xl text-slate-700 mb-4 animate-pulse"></i>
+              <h2 class="text-2xl font-cinzel text-slate-300">Tira el dado para jugar</h2>
+              <p class="text-slate-500 mt-2">Adivina la película basándote en la pista.</p>
+            </div>
+
+            <!-- Pre-Clue State (For secret information like Mimic and Taboo) -->
+            <div id="preClueState" class="hidden w-full h-full flex-col items-center justify-center">
+              <i class="fa-solid fa-user-secret text-6xl text-gold-400 mb-4"></i>
+              <h3 class="text-2xl font-cinzel text-slate-200 mb-2">¡Pista Secreta!</h3>
+              <p class="text-slate-400 mb-8 max-w-md">Pasadle el dispositivo a un jugador. Ese jugador será el único que pueda ver la siguiente pantalla.</p>
+              <button onclick="revealSecretClue()" class="bg-cinema-dark border-2 border-gold-500 text-gold-400 hover:bg-gold-500 hover:text-cinema-dark font-bold py-3 px-8 rounded-full transition-all flex items-center gap-2">
+                <i class="fa-solid fa-eye-slash"></i> Ver en Secreto
+              </button>
+            </div>
+
+            <div id="clueState" class="hidden w-full h-full flex-col items-center justify-center">
+              <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-cinema-dark border-2 border-gold-500 text-gold-400 mb-4 shadow-neon-gold" id="clueIcon">
+                <i class="fa-solid fa-question text-3xl"></i>
+              </div>
+              <h3 class="text-gold-400 font-cinzel text-xl md:text-2xl mb-2 font-bold tracking-widest uppercase" id="clueCategory">Categoría</h3>
+              <div class="w-16 h-px bg-gold-600/50 mb-4 mx-auto"></div>
+              
+              <div class="bg-cinema-dark/50 border border-cinema-border/50 rounded-xl p-6 w-full max-w-2xl relative" id="clueContentBox">
+                <!-- Content will be injected here -->
+              </div>
+
+              <div class="mt-auto pt-6" id="revealBtnContainer">
+                <button onclick="revealMovie()" class="bg-transparent border-2 border-cinema-red hover:bg-cinema-red/10 text-white font-bold py-2 px-8 rounded-full transition-all hover:shadow-neon-red flex items-center gap-2">
+                  <i class="fa-solid fa-eye"></i> Revelar Respuesta
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Back of Card: Revealed Movie -->
+          <div class="flip-back bg-cinema-card border border-cinema-border rounded-2xl shadow-card-glow flex flex-col md:flex-row overflow-hidden">
+            <!-- Poster Side -->
+            <div class="md:w-2/5 h-64 md:h-full relative shrink-0 border-b md:border-b-0 md:border-r border-cinema-border">
+              <img id="moviePoster" src="" alt="Poster" class="w-full h-full object-cover">
+              <div class="absolute inset-0 bg-gradient-to-t from-cinema-dark via-transparent to-transparent md:hidden"></div>
+            </div>
+            
+            <!-- Details Side -->
+            <div class="md:w-3/5 p-6 md:p-8 overflow-y-auto flex flex-col">
+              <div class="flex justify-between items-start mb-2">
+                <h2 id="movieTitle" class="text-3xl md:text-4xl font-cinzel font-black text-gold-400 uppercase leading-tight text-balance"></h2>
+                <span id="movieYear" class="bg-cinema-dark text-slate-300 text-sm font-bold py-1 px-3 rounded-full border border-cinema-border"></span>
+              </div>
+              
+              <p id="movieDirector" class="text-slate-400 font-medium mb-6"><i class="fa-solid fa-video text-xs mr-2"></i>Director: <span></span></p>
+
+              <div class="space-y-5 text-sm md:text-base text-slate-300">
+                
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="border-l-2 border-cinema-red pl-4 py-1 italic">
+                        <p id="movieQuote" class="text-slate-200"></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="bg-cinema-dark/50 p-3 rounded-lg border border-cinema-border">
+                    <h4 class="text-[10px] uppercase text-gold-600 font-bold tracking-wider mb-1"><i class="fa-solid fa-users mr-1"></i> Reparto</h4>
+                    <p id="movieCast" class="text-xs"></p>
+                  </div>
+                  <div class="bg-cinema-dark/50 p-3 rounded-lg border border-cinema-border">
+                    <h4 class="text-[10px] uppercase text-gold-600 font-bold tracking-wider mb-1"><i class="fa-solid fa-masks-theater mr-1"></i> Emojis</h4>
+                    <p id="movieEmojis" class="text-lg tracking-widest"></p>
+                  </div>
+                </div>
+
+                <!-- Detalles de la película que se mostrarán siempre, sin importar la categoría -->
+                <div class="bg-gradient-to-br from-cinema-dark to-slate-900 p-4 rounded-xl border border-cinema-border relative overflow-hidden">
+                    <h4 class="text-xs uppercase text-gold-600 font-bold tracking-wider mb-2 relative z-10">Respuesta Correcta / Detalles</h4>
+                    <p id="revealDetailsText" class="text-sm relative z-10 font-medium text-white"></p>
+                </div>
+
+              </div>
+
+              <div class="mt-auto pt-6 flex justify-end">
+                <button onclick="nextTurn()" class="bg-gold-500 hover:bg-gold-400 text-cinema-dark font-bold py-2 px-6 rounded-lg transition-all shadow-md hover:shadow-neon-gold flex items-center gap-2">
+                  <i class="fa-solid fa-forward-step"></i> Siguiente Turno
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-cinema-dark border-t border-cinema-border py-6 text-center text-slate-500 text-sm mt-auto z-10 relative">
+    <p>&copy; 2024 Yo Soy Tu Peli. Juego de Mesa Cinéfilo.</p>
+  </footer>
+
+  <script>
+    // Batallas Characteristics List (Independent from specific movies)
+    const battleCharacteristics = [
+      "Películas de animación",
+      "Películas Navideñas",
+      "Películas con extraterrestres",
+      "Películas basadas en hechos reales",
+      "Películas de Superhéroes",
+      "Películas que ocurren en el espacio",
+      "Películas con un número en el título",
+      "Películas de terror",
+      "Películas de viajes en el tiempo",
+      "Películas ganadoras del Oscar a Mejor Película",
+      "Películas de zombis",
+      "Musicales",
+      "Películas protagonizadas por animales",
+      "Películas basadas en videojuegos",
+      "Películas de artes marciales",
+      "Películas ambientadas en el futuro",
+      "Películas donde el mundo se acaba",
+      "Comedias románticas",
+      "Películas sobre deportes",
+      "Películas con magia"
+    ];
+
+    // Movie Database (Expanded to 30)
+    const movies = [
+      {
+        titulo: "El Padrino",
+        año: "1972",
+        director: "Francis Ford Coppola",
+        reparto: "Marlon Brando, Al Pacino, James Caan",
+        frase: "Le haré una oferta que no podrá rechazar.",
+        emojis: "🤵🏻‍♂️💍🐴🩸",
+        poster: "El+Padrino",
+        testPregunta: "¿Qué objeto deja el equipo de Corleone en la cama del productor de cine Jack Woltz?",
+        testOpciones: ["A) Una pistola", "B) Una cabeza de caballo", "C) Un cheque en blanco"],
+        testCorrecta: "B) Una cabeza de caballo",
+        tabuPalabras: ["Mafia", "Corleone", "Italia", "Marlon Brando"]
+      },
+
+      // 40 PELÍCULAS NUEVAS
+      {
+        titulo: "Shrek",
+        año: "2001",
+        director: "Andrew Adamson, Vicky Jenson",
+        reparto: "Mike Myers, Eddie Murphy, Cameron Diaz",
+        frase: "Mejor afuera que adentro.",
+        emojis: "👹🫏🏰🧅",
+        poster: "Shrek",
+        testPregunta: "¿A qué elemento dice Shrek que se parecen los ogros porque tienen capas?",
+        testOpciones: ["A) A los pasteles", "B) A las cebollas", "C) A los parfaits"],
+        testCorrecta: "B) A las cebollas",
+        tabuPalabras: ["Ogro", "Asno", "Fiona", "Pantano"]
+      },
+      {
+        titulo: "Toy Story",
+        año: "1995",
+        director: "John Lasseter",
+        reparto: "Tom Hanks, Tim Allen",
+        frase: "¡Hasta el infinito y más allá!",
+        emojis: "🤠🚀🧸👢",
+        poster: "Toy+Story",
+        testPregunta: "¿Cómo se llama el dueño de los juguetes protagonistas?",
+        testOpciones: ["A) Sid", "B) Andy", "C) Bonnie"],
+        testCorrecta: "B) Andy",
+        tabuPalabras: ["Vaquero", "Espacio", "Juguete", "Infinito"]
+      },
+      {
+        titulo: "Star Wars: El Imperio Contraataca",
+        año: "1980",
+        director: "Irvin Kershner",
+        reparto: "Mark Hamill, Harrison Ford, Carrie Fisher",
+        frase: "No. Yo soy tu padre.",
+        emojis: "❄️🤺🌌🤖",
+        poster: "El+Imperio+Contraataca",
+        testPregunta: "¿En qué planeta helado se oculta la base rebelde al inicio de la película?",
+        testOpciones: ["A) Tatooine", "B) Endor", "C) Hoth"],
+        testCorrecta: "C) Hoth",
+        tabuPalabras: ["Padre", "Yoda", "Nieve", "Congelado"]
+      },
+      {
+        titulo: "Vengadores: Endgame",
+        año: "2019",
+        director: "Anthony y Joe Russo",
+        reparto: "Robert Downey Jr., Chris Evans, Scarlett Johansson",
+        frase: "Te quiero tres mil.",
+        emojis: "🧤💎⏳🦸‍♂️",
+        poster: "Vengadores+Endgame",
+        testPregunta: "¿Quién se sacrifica en Vormir para conseguir la Gema del Alma?",
+        testOpciones: ["A) Ojo de Halcón", "B) Viuda Negra", "C) Iron Man"],
+        testCorrecta: "B) Viuda Negra",
+        tabuPalabras: ["Thanos", "Chasquido", "Gemas", "Tiempo"]
+      },
+      {
+        titulo: "Cazafantasmas",
+        año: "1984",
+        director: "Ivan Reitman",
+        reparto: "Bill Murray, Dan Aykroyd, Harold Ramis",
+        frase: "No crucen los rayos.",
+        emojis: "👻🚫🎒🚒",
+        poster: "Cazafantasmas",
+        testPregunta: "¿Qué forma adopta el destructor Gozer al final de la película?",
+        testOpciones: ["A) Un dragón gigante", "B) El muñeco de los Marshmallows", "C) Una estatua de piedra"],
+        testCorrecta: "B) El muñeco de los Marshmallows",
+        tabuPalabras: ["Fantasmas", "Mochila", "Pegajoso", "Nueva York"]
+      },
+      {
+        titulo: "Solo en Casa",
+        año: "1990",
+        director: "Chris Columbus",
+        reparto: "Macaulay Culkin, Joe Pesci, Daniel Stern",
+        frase: "¡Quédate con el cambio, sabandija asquerosa!",
+        emojis: "👦😱🏠🧳",
+        poster: "Solo+En+Casa",
+        testPregunta: "¿A dónde viaja la familia McCallister de vacaciones por Navidad?",
+        testOpciones: ["A) París", "B) Londres", "C) Miami"],
+        testCorrecta: "A) París",
+        tabuPalabras: ["Niño", "Ladrones", "Trampas", "Olvidado"]
+      },
+      {
+        titulo: "Tiburón",
+        año: "1975",
+        director: "Steven Spielberg",
+        reparto: "Roy Scheider, Robert Shaw, Richard Dreyfuss",
+        frase: "Necesitaremos un barco más grande.",
+        emojis: "🦈🏖️🚤🩸",
+        poster: "Tiburon",
+        testPregunta: "¿Cómo se llama la isla ficticia donde ocurren los ataques?",
+        testOpciones: ["A) Martha's Vineyard", "B) Amity Island", "C) Isla Nublar"],
+        testCorrecta: "B) Amity Island",
+        tabuPalabras: ["Playa", "Barco", "Morder", "Sangre"]
+      },
+      {
+        titulo: "El Sexto Sentido",
+        año: "1999",
+        director: "M. Night Shyamalan",
+        reparto: "Bruce Willis, Haley Joel Osment",
+        frase: "En ocasiones veo muertos.",
+        emojis: "👦👻🥶💍",
+        poster: "El+Sexto+Sentido",
+        testPregunta: "¿Qué le ocurre al niño protagonista cuando hay espíritus cerca?",
+        testOpciones: ["A) Le sangra la nariz", "B) Los relojes se paran", "C) Siente mucho frío"],
+        testCorrecta: "C) Siente mucho frío",
+        tabuPalabras: ["Fantasma", "Psicólogo", "Niño", "Miedo"]
+      },
+      {
+        titulo: "Los Increíbles",
+        año: "2004",
+        director: "Brad Bird",
+        reparto: "Craig T. Nelson, Holly Hunter",
+        frase: "¡Sin capas!",
+        emojis: "🦸‍♂️🦸‍♀️👶🏃‍♂️",
+        poster: "Los+Increibles",
+        testPregunta: "¿Cuál es el superpoder del hijo mediano, Dash?",
+        testOpciones: ["A) Invisibilidad", "B) Súper fuerza", "C) Súper velocidad"],
+        testCorrecta: "C) Súper velocidad",
+        tabuPalabras: ["Familia", "Superhéroes", "Traje", "Capa"]
+      },
+      {
+        titulo: "Up",
+        año: "2009",
+        director: "Pete Docter",
+        reparto: "Ed Asner, Christopher Plummer",
+        frase: "La aventura nos aguarda.",
+        emojis: "🎈🏠👴👦",
+        poster: "Up",
+        testPregunta: "¿Hacia dónde quiere viajar Carl con su casa voladora?",
+        testOpciones: ["A) Las Cataratas del Paraíso", "B) El Monte Everest", "C) La Selva Amazónica"],
+        testCorrecta: "A) Las Cataratas del Paraíso",
+        tabuPalabras: ["Globos", "Anciano", "Niño", "Perro"]
+      },
+      {
+        titulo: "WALL-E",
+        año: "2008",
+        director: "Andrew Stanton",
+        reparto: "Ben Burtt, Elissa Knight",
+        frase: "E-va.",
+        emojis: "🤖🌱🗑️🚀",
+        poster: "WALL-E",
+        testPregunta: "¿Qué descubre WALL-E en la Tierra y lo guarda dentro de un zapato viejo?",
+        testOpciones: ["A) Un diamante", "B) Una planta", "C) Un anillo de oro"],
+        testCorrecta: "B) Una planta",
+        tabuPalabras: ["Robot", "Basura", "Espacio", "Planta"]
+      },
+      {
+        titulo: "Ratatouille",
+        año: "2007",
+        director: "Brad Bird",
+        reparto: "Patton Oswalt, Ian Holm",
+        frase: "Cualquiera puede cocinar.",
+        emojis: "🐀👨‍🍳🥖🍲",
+        poster: "Ratatouille",
+        testPregunta: "¿Dónde se esconde Remy para controlar los movimientos de Linguini?",
+        testOpciones: ["A) En su bolsillo", "B) Bajo su gorro de cocinero", "C) En su mochila"],
+        testCorrecta: "B) Bajo su gorro de cocinero",
+        tabuPalabras: ["Rata", "Cocina", "París", "Chef"]
+      },
+      {
+        titulo: "Piratas del Caribe: La maldición de la Perla Negra",
+        año: "2003",
+        director: "Gore Verbinski",
+        reparto: "Johnny Depp, Orlando Bloom, Keira Knightley",
+        frase: "Tú siempre recordarás este día como el día en que casi capturas al Capitán Jack Sparrow.",
+        emojis: "🏴‍☠️🚢☠️🪙",
+        poster: "Piratas+Del+Caribe",
+        testPregunta: "¿Qué objeto maldito buscan recuperar los piratas esqueléticos?",
+        testOpciones: ["A) El tridente de Poseidón", "B) La brújula rota", "C) Las monedas de oro azteca"],
+        testCorrecta: "C) Las monedas de oro azteca",
+        tabuPalabras: ["Jack", "Barco", "Esqueleto", "Ron"]
+      },
+      {
+        titulo: "El Señor de los Anillos: El Retorno del Rey",
+        año: "2003",
+        director: "Peter Jackson",
+        reparto: "Elijah Wood, Viggo Mortensen, Sean Astin",
+        frase: "No puedo llevar el anillo por ti, ¡pero puedo llevarte a ti!",
+        emojis: "👑🌋💍🕷️",
+        poster: "El+Retorno+Del+Rey",
+        testPregunta: "¿Quién cae finalmente a la lava del Monte del Destino junto con el Anillo Único?",
+        testOpciones: ["A) Frodo", "B) Sam", "C) Gollum"],
+        testCorrecta: "C) Gollum",
+        tabuPalabras: ["Volcán", "Anillo", "Batalla", "Rey"]
+      },
+      {
+        titulo: "Harry Potter y el Prisionero de Azkaban",
+        año: "2004",
+        director: "Alfonso Cuarón",
+        reparto: "Daniel Radcliffe, Gary Oldman",
+        frase: "Juro solemnemente que mis intenciones no son buenas.",
+        emojis: "⚡🐺⏳🚌",
+        poster: "Prisionero+De+Azkaban",
+        testPregunta: "¿Qué animal es el patronus de Harry Potter?",
+        testOpciones: ["A) Un ciervo", "B) Un perro", "C) Una nutria"],
+        testCorrecta: "A) Un ciervo",
+        tabuPalabras: ["Sirius", "Perro", "Dementor", "Tiempo"]
+      },
+      {
+        titulo: "Mamma Mia!",
+        año: "2008",
+        director: "Phyllida Lloyd",
+        reparto: "Meryl Streep, Amanda Seyfried, Pierce Brosnan",
+        frase: "¡Mamma mia, aquí vamos otra vez!",
+        emojis: "👰🎤🏝️💃",
+        poster: "Mamma+Mia",
+        testPregunta: "¿Dónde se celebra la boda de Sophie?",
+        testOpciones: ["A) En Roma", "B) En una isla griega", "C) En la Toscana"],
+        testCorrecta: "B) En una isla griega",
+        tabuPalabras: ["Boda", "Canciones", "Isla", "Padres"]
+      },
+      {
+        titulo: "Grease",
+        año: "1978",
+        director: "Randal Kleiser",
+        reparto: "John Travolta, Olivia Newton-John",
+        frase: "Dime más, dime más.",
+        emojis: "🚗💃🕺💇‍♂️",
+        poster: "Grease",
+        testPregunta: "¿Cómo se llama la pandilla de chicas a la que se une Sandy?",
+        testOpciones: ["A) Pink Ladies", "B) T-Birds", "C) Red Roses"],
+        testCorrecta: "A) Pink Ladies",
+        tabuPalabras: ["Instituto", "Coche", "Canto", "Cuero"]
+      },
+      {
+        titulo: "Dirty Dancing",
+        año: "1987",
+        director: "Emile Ardolino",
+        reparto: "Patrick Swayze, Jennifer Grey",
+        frase: "Nadie arrincona a Baby.",
+        emojis: "🍉💃🕺🎶",
+        poster: "Dirty+Dancing",
+        testPregunta: "¿Qué objeto lleva Baby en las manos cuando entra por primera vez a la fiesta de los trabajadores?",
+        testOpciones: ["A) Una piña", "B) Una sandía", "C) Unas toallas"],
+        testCorrecta: "B) Una sandía",
+        tabuPalabras: ["Baile", "Verano", "Elevación", "Profesor"]
+      },
+      {
+        titulo: "El Show de Truman",
+        año: "1998",
+        director: "Peter Weir",
+        reparto: "Jim Carrey, Ed Harris",
+        frase: "Y por si no nos vemos luego: ¡buenos días, buenas tardes y buenas noches!",
+        emojis: "📺👋⛵☀️",
+        poster: "El+Show+De+Truman",
+        testPregunta: "¿Qué es lo primero que se cae del 'cielo' levantando las sospechas de Truman?",
+        testOpciones: ["A) Un satélite", "B) Un pájaro robótico", "C) Un foco de estudio"],
+        testCorrecta: "C) Un foco de estudio",
+        tabuPalabras: ["Televisión", "Vida", "Realidad", "Falso"]
+      },
+      {
+        titulo: "Eduardo Manostijeras",
+        año: "1990",
+        director: "Tim Burton",
+        reparto: "Johnny Depp, Winona Ryder",
+        frase: "No estoy acabado.",
+        emojis: "✂️👐❄️🏰",
+        poster: "Eduardo+Manostijeras",
+        testPregunta: "¿A qué se dedica Eduardo en el barrio con sus manos especiales?",
+        testOpciones: ["A) Cocina pizzas", "B) Poda setos y corta el pelo", "C) Talla estatuas de madera"],
+        testCorrecta: "B) Poda setos y corta el pelo",
+        tabuPalabras: ["Tijeras", "Hielo", "Vecindario", "Castillo"]
+      },
+      {
+        titulo: "Pesadilla antes de Navidad",
+        año: "1993",
+        director: "Henry Selick",
+        reparto: "Danny Elfman, Chris Sarandon",
+        frase: "¿Qué es esto? ¿Qué es esto? Hay color por doquier.",
+        emojis: "🎃💀🎄🎁",
+        poster: "Pesadilla+Antes+De+Navidad",
+        testPregunta: "¿A quién secuestran Lock, Shock y Barrel?",
+        testOpciones: ["A) Al Conejo de Pascua", "B) A Santa Claus (Santa Clavos)", "C) A Jack Skellington"],
+        testCorrecta: "B) A Santa Claus (Santa Clavos)",
+        tabuPalabras: ["Navidad", "Esqueleto", "Secuestro", "Nieve"]
+      },
+      {
+        titulo: "Aladdin",
+        año: "1992",
+        director: "Ron Clements, John Musker",
+        reparto: "Robin Williams, Scott Weinger",
+        frase: "Un mundo ideal.",
+        emojis: "🧞‍♂️🪔🐒🕌",
+        poster: "Aladdin",
+        testPregunta: "¿Cuál es el último deseo que pide Aladdin al Genio?",
+        testOpciones: ["A) Ser un príncipe rico", "B) La libertad del Genio", "C) Que Jafar desaparezca"],
+        testCorrecta: "B) La libertad del Genio",
+        tabuPalabras: ["Lámpara", "Genio", "Alfombra", "Mono"]
+      },
+      {
+        titulo: "La Bella y la Bestia",
+        año: "1991",
+        director: "Gary Trousdale, Kirk Wise",
+        reparto: "Paige O'Hara, Robby Benson",
+        frase: "La belleza está en el interior.",
+        emojis: "🌹🦁📚🕰️",
+        poster: "La+Bella+Y+La+Bestia",
+        testPregunta: "¿Qué objeto marca el tiempo límite que tiene la Bestia para aprender a amar?",
+        testOpciones: ["A) Un reloj de arena", "B) Una flor marchita", "C) Una rosa encantada"],
+        testCorrecta: "C) Una rosa encantada",
+        tabuPalabras: ["Castillo", "Rosa", "Maldición", "Libros"]
+      },
+      {
+        titulo: "Mulan",
+        año: "1998",
+        director: "Tony Bancroft, Barry Cook",
+        reparto: "Ming-Na Wen, Eddie Murphy",
+        frase: "La flor que florece en la adversidad es la más rara y hermosa de todas.",
+        emojis: "🐉⚔️💇🏻‍♀️🏮",
+        poster: "Mulan",
+        testPregunta: "¿Cómo se llama el pequeño dragón que los ancestros envían para protegerla?",
+        testOpciones: ["A) Cri-Kee", "B) Mushu", "C) Khan"],
+        testCorrecta: "B) Mushu",
+        tabuPalabras: ["China", "Guerra", "Disfraz", "Espada"]
+      },
+      {
+        titulo: "Tarzán",
+        año: "1999",
+        director: "Chris Buck, Kevin Lima",
+        reparto: "Tony Goldwyn, Minnie Driver",
+        frase: "Dos mundos, una familia.",
+        emojis: "🦍🌿👨🏽⛺",
+        poster: "Tarzan",
+        testPregunta: "¿Qué animal adopta a Tarzán cuando pierde a sus padres?",
+        testOpciones: ["A) Un leopardo", "B) Un elefante", "C) Un gorila"],
+        testCorrecta: "C) Un gorila",
+        tabuPalabras: ["Selva", "Monos", "Lianas", "Humanos"]
+      },
+      {
+        titulo: "Braveheart",
+        año: "1995",
+        director: "Mel Gibson",
+        reparto: "Mel Gibson, Sophie Marceau",
+        frase: "¡Podrán quitarnos la vida, pero jamás nos quitarán la libertad!",
+        emojis: "🏴󠁧󠁢󠁳󠁣󠁴󠁿⚔️🔵🐴",
+        poster: "Braveheart",
+        testPregunta: "¿De qué color se pinta la cara William Wallace para la batalla?",
+        testOpciones: ["A) Azul y blanco", "B) Verde", "C) Rojo sangre"],
+        testCorrecta: "A) Azul y blanco",
+        tabuPalabras: ["Escocia", "Libertad", "Espada", "Pintura"]
+      },
+      {
+        titulo: "Salvar al soldado Ryan",
+        año: "1998",
+        director: "Steven Spielberg",
+        reparto: "Tom Hanks, Matt Damon",
+        frase: "James... gánate esto.",
+        emojis: "🪖🏖️🔫🎖️",
+        poster: "Salvar+Al+Soldado+Ryan",
+        testPregunta: "¿En qué famosa playa de Normandía tiene lugar la escena inicial de la película?",
+        testOpciones: ["A) Playa Utah", "B) Playa Omaha", "C) Playa Gold"],
+        testCorrecta: "B) Playa Omaha",
+        tabuPalabras: ["Guerra", "Hermanos", "Desembarco", "Soldados"]
+      },
+      {
+        titulo: "La lista de Schindler",
+        año: "1993",
+        director: "Steven Spielberg",
+        reparto: "Liam Neeson, Ralph Fiennes",
+        frase: "Quien salva una vida, salva al mundo entero.",
+        emojis: "🏭🚂👧🏻🧥",
+        poster: "La+Lista+De+Schindler",
+        testPregunta: "¿Qué elemento visual destaca en color durante la película que es entera en blanco y negro?",
+        testOpciones: ["A) Una rosa roja", "B) El abrigo de una niña", "C) Una bandera dorada"],
+        testCorrecta: "B) El abrigo de una niña",
+        tabuPalabras: ["Guerra", "Fábrica", "Judíos", "Blanco y negro"]
+      },
+      {
+        titulo: "El indomable Will Hunting",
+        año: "1997",
+        director: "Gus Van Sant",
+        reparto: "Matt Damon, Robin Williams",
+        frase: "No es tu culpa.",
+        emojis: "🧮🧹👨‍🏫🧠",
+        poster: "El+Indomable+Will+Hunting",
+        testPregunta: "¿En qué trabaja Will Hunting en la universidad del MIT antes de ser descubierto?",
+        testOpciones: ["A) Ayudante de cocina", "B) Conserje limpiando", "C) Bibliotecario"],
+        testCorrecta: "B) Conserje limpiando",
+        tabuPalabras: ["Matemáticas", "Genio", "Psicólogo", "Pizarra"]
+      },
+      {
+        titulo: "Seven (Se7en)",
+        año: "1995",
+        director: "David Fincher",
+        reparto: "Brad Pitt, Morgan Freeman",
+        frase: "¡¿Qué hay en la caja?!",
+        emojis: "📦7️⃣🌧️🕵️‍♂️",
+        poster: "Seven",
+        testPregunta: "¿En qué se basan los crímenes del asesino en serie John Doe?",
+        testOpciones: ["A) En los signos del zodiaco", "B) En los siete pecados capitales", "C) En plagas bíblicas"],
+        testCorrecta: "B) En los siete pecados capitales",
+        tabuPalabras: ["Pecados", "Detectives", "Lluvia", "Caja"]
+      },
+      {
+        titulo: "Psicosis",
+        año: "1960",
+        director: "Alfred Hitchcock",
+        reparto: "Anthony Perkins, Janet Leigh",
+        frase: "El mejor amigo de un muchacho es su madre.",
+        emojis: "🚿🔪🏨😱",
+        poster: "Psicosis",
+        testPregunta: "¿En qué parte del motel ocurre el famoso asesinato de Marion Crane?",
+        testOpciones: ["A) En la cama", "B) En el sótano", "C) En la ducha"],
+        testCorrecta: "C) En la ducha",
+        tabuPalabras: ["Ducha", "Cuchillo", "Motel", "Madre"]
+      },
+      {
+        titulo: "El Exorcista",
+        año: "1973",
+        director: "William Friedkin",
+        reparto: "Linda Blair, Max von Sydow",
+        frase: "¡El poder de Cristo te obliga!",
+        emojis: "👧🛏️✝️🤮",
+        poster: "El+Exorcista",
+        testPregunta: "¿Cómo se llama el demonio ancestral que posee a la niña Regan?",
+        testOpciones: ["A) Bafomet", "B) Pazuzu", "C) Belcebú"],
+        testCorrecta: "B) Pazuzu",
+        tabuPalabras: ["Niña", "Cura", "Posesión", "Cama"]
+      },
+      {
+        titulo: "Halloween",
+        año: "1978",
+        director: "John Carpenter",
+        reparto: "Jamie Lee Curtis, Donald Pleasence",
+        frase: "Es el hombre del saco.",
+        emojis: "🎃🔪🏃‍♀️😱",
+        poster: "Halloween",
+        testPregunta: "¿Qué tipo de máscara pintada de blanco utiliza el asesino Michael Myers?",
+        testOpciones: ["A) Una de payaso", "B) Una del Capitán Kirk de Star Trek", "C) Una de hockey"],
+        testCorrecta: "B) Una del Capitán Kirk de Star Trek",
+        tabuPalabras: ["Octubre", "Cuchillo", "Niñera", "Máscara"]
+      },
+      {
+        titulo: "Scream",
+        año: "1996",
+        director: "Wes Craven",
+        reparto: "Neve Campbell, Courteney Cox",
+        frase: "¿Cuál es tu película de terror favorita?",
+        emojis: "📞👻🔪🩸",
+        poster: "Scream",
+        testPregunta: "¿A través de qué medio suele contactar el asesino 'Ghostface' con sus víctimas inicialmente?",
+        testOpciones: ["A) Una carta por debajo de la puerta", "B) Una llamada de teléfono fijo", "C) Un walkie-talkie"],
+        testCorrecta: "B) Una llamada de teléfono fijo",
+        tabuPalabras: ["Teléfono", "Cuchillo", "Máscara", "Reglas"]
+      },
+      {
+        titulo: "IT",
+        año: "2017",
+        director: "Andy Muschietti",
+        reparto: "Bill Skarsgård, Finn Wolfhard",
+        frase: "Tú también flotarás.",
+        emojis: "🎈🤡🌧️⛵",
+        poster: "IT",
+        testPregunta: "¿Cómo se llama el grupo que forman los niños protagonistas para combatir a Pennywise?",
+        testOpciones: ["A) El Club de los Exploradores", "B) Los Valientes", "C) El Club de los Perdedores"],
+        testCorrecta: "C) El Club de los Perdedores",
+        tabuPalabras: ["Payaso", "Globo", "Alcantarilla", "Miedo"]
+      },
+      {
+        titulo: "El laberinto del fauno",
+        año: "2006",
+        director: "Guillermo del Toro",
+        reparto: "Ivana Baquero, Sergi López",
+        frase: "No es un hombre... es un Fauno.",
+        emojis: "👧👁️🤲🌳",
+        poster: "El+Laberinto+Del+Fauno",
+        testPregunta: "¿Cuántas tareas le encomienda el Fauno a la joven Ofelia?",
+        testOpciones: ["A) Tres tareas", "B) Siete tareas", "C) Una única misión"],
+        testCorrecta: "A) Tres tareas",
+        tabuPalabras: ["Guerra", "España", "Fantasía", "Pruebas"]
+      },
+      {
+        titulo: "Amélie",
+        año: "2001",
+        director: "Jean-Pierre Jeunet",
+        reparto: "Audrey Tautou, Mathieu Kassovitz",
+        frase: "Son tiempos difíciles para los soñadores.",
+        emojis: "☕🥄📸🖼️",
+        poster: "Amelie",
+        testPregunta: "¿Dónde trabaja Amélie en París?",
+        testOpciones: ["A) En un museo", "B) En una cafetería", "C) En una floristería"],
+        testCorrecta: "B) En una cafetería",
+        tabuPalabras: ["París", "Enanos", "Fotos", "Francesa"]
+      },
+      {
+        titulo: "La La Land",
+        año: "2016",
+        director: "Damien Chazelle",
+        reparto: "Emma Stone, Ryan Gosling",
+        frase: "Brindo por los que sueñan, por muy tontos que parezcan.",
+        emojis: "🎹💃🕺🌃",
+        poster: "La+La+Land",
+        testPregunta: "¿Qué tipo de música quiere salvar y proteger Sebastian abriendo su propio club?",
+        testOpciones: ["A) Rock and Roll clásico", "B) Jazz", "C) Blues"],
+        testCorrecta: "B) Jazz",
+        tabuPalabras: ["Musical", "Actriz", "Piano", "Los Ángeles"]
+      },
+      {
+        titulo: "Interstellar",
+        año: "2014",
+        director: "Christopher Nolan",
+        reparto: "Matthew McConaughey, Anne Hathaway",
+        frase: "El amor es la única cosa que somos capaces de percibir que trasciende las dimensiones de tiempo y espacio.",
+        emojis: "🚀🌌⏳🌽",
+        poster: "Interstellar",
+        testPregunta: "¿Qué problema climático sufre la Tierra al principio de la película arruinando las cosechas?",
+        testOpciones: ["A) Una plaga de polvo asfixiante", "B) Inundaciones constantes", "C) Una glaciación"],
+        testCorrecta: "A) Una plaga de polvo asfixiante",
+        tabuPalabras: ["Espacio", "Tiempo", "Astronauta", "Reloj"]
+      },
+      {
+        titulo: "El Lobo de Wall Street",
+        año: "2013",
+        director: "Martin Scorsese",
+        reparto: "Leonardo DiCaprio, Jonah Hill",
+        frase: "¡Véndeme este bolígrafo!",
+        emojis: "💸🐺💊🛥️",
+        poster: "El+Lobo+De+Wall+Street",
+        testPregunta: "¿Qué hace Jordan Belfort con un montón de billetes en su barco frente a los agentes del FBI?",
+        testOpciones: ["A) Los quema", "B) Se los tira al mar", "C) Los esparce como confeti"],
+        testCorrecta: "B) Se los tira al mar",
+        tabuPalabras: ["Dinero", "Acciones", "Excesos", "Ventas"]
+      },
+
+      {
+        titulo: "Matrix",
+        año: "1999",
+        director: "Las Hermanas Wachowski",
+        reparto: "Keanu Reeves, Laurence Fishburne",
+        frase: "No hay cuchara.",
+        emojis: "💊🕶️💻🐇",
+        poster: "Matrix",
+        testPregunta: "¿Qué color de pastilla elige Neo para descubrir la verdad?",
+        testOpciones: ["A) Azul", "B) Roja", "C) Verde"],
+        testCorrecta: "B) Roja",
+        tabuPalabras: ["Realidad", "Neo", "Simulación", "Pastilla"]
+      },
+      {
+        titulo: "Titanic",
+        año: "1997",
+        director: "James Cameron",
+        reparto: "Leonardo DiCaprio, Kate Winslet",
+        frase: "¡Soy el rey del mundo!",
+        emojis: "🚢🧊🎻👩‍❤️‍👨",
+        poster: "Titanic",
+        testPregunta: "¿Cómo se llama el valioso collar que lleva Rose?",
+        testOpciones: ["A) La Estrella de la Mañana", "B) El Corazón de la Mar", "C) El Zafiro del Océano"],
+        testCorrecta: "B) El Corazón de la Mar",
+        tabuPalabras: ["Barco", "Iceberg", "Hundimiento", "Jack"]
+      },
+      {
+        titulo: "El Señor de los Anillos: La Comunidad del Anillo",
+        año: "2001",
+        director: "Peter Jackson",
+        reparto: "Elijah Wood, Ian McKellen",
+        frase: "¡No puedes pasar!",
+        emojis: "💍🌋🧙‍♂️🏹",
+        poster: "El+Senor+De+Los+Anillos",
+        testPregunta: "¿Cuántos miembros forman la Comunidad del Anillo originalmente?",
+        testOpciones: ["A) Siete", "B) Ocho", "C) Nueve"],
+        testCorrecta: "C) Nueve",
+        tabuPalabras: ["Frodo", "Gandalf", "Hobbit", "Sauron"]
+      },
+      {
+        titulo: "Star Wars: Una Nueva Esperanza",
+        año: "1977",
+        director: "George Lucas",
+        reparto: "Mark Hamill, Harrison Ford",
+        frase: "Que la Fuerza te acompañe.",
+        emojis: "⚔️🌌🤖👸",
+        poster: "Star+Wars",
+        testPregunta: "¿Cómo se llama la estación espacial del Imperio que deben destruir?",
+        testOpciones: ["A) La Estrella de la Muerte", "B) El Destructor Estelar", "C) Base Starkiller"],
+        testCorrecta: "A) La Estrella de la Muerte",
+        tabuPalabras: ["Jedi", "Sable", "Vader", "Luke"]
+      },
+      {
+        titulo: "Jurassic Park",
+        año: "1993",
+        director: "Steven Spielberg",
+        reparto: "Sam Neill, Laura Dern, Jeff Goldblum",
+        frase: "La vida se abre camino.",
+        emojis: "🦖🦕🚁🦟",
+        poster: "Jurassic+Park",
+        testPregunta: "¿De dónde extraen los científicos el ADN de los dinosaurios?",
+        testOpciones: ["A) De huesos fosilizados", "B) De mosquitos atrapados en ámbar", "C) De hielo antártico"],
+        testCorrecta: "B) De mosquitos atrapados en ámbar",
+        tabuPalabras: ["Dinosaurios", "Isla", "Parque", "T-Rex"]
+      },
+      {
+        titulo: "Forrest Gump",
+        año: "1994",
+        director: "Robert Zemeckis",
+        reparto: "Tom Hanks, Robin Wright",
+        frase: "La vida es como una caja de bombones.",
+        emojis: "🏃‍♂️🍫🏓🪖",
+        poster: "Forrest+Gump",
+        testPregunta: "¿En qué deporte se convierte Forrest en una estrella universitaria?",
+        testOpciones: ["A) Béisbol", "B) Fútbol americano", "C) Baloncesto"],
+        testCorrecta: "B) Fútbol americano",
+        tabuPalabras: ["Correr", "Bombones", "Tenis de mesa", "Vietnam"]
+      },
+      {
+        titulo: "Regreso al Futuro",
+        año: "1985",
+        director: "Robert Zemeckis",
+        reparto: "Michael J. Fox, Christopher Lloyd",
+        frase: "¿Carreteras? A donde vamos no necesitamos... carreteras.",
+        emojis: "🚗⚡🛹🕰️",
+        poster: "Regreso+Al+Futuro",
+        testPregunta: "¿A qué velocidad debe llegar el DeLorean para viajar en el tiempo?",
+        testOpciones: ["A) 88 millas por hora", "B) 100 kilómetros por hora", "C) 120 millas por hora"],
+        testCorrecta: "A) 88 millas por hora",
+        tabuPalabras: ["Tiempo", "DeLorean", "Coche", "Doc"]
+      },
+      {
+        titulo: "El Resplandor",
+        año: "1980",
+        director: "Stanley Kubrick",
+        reparto: "Jack Nicholson, Shelley Duvall",
+        frase: "¡Aquí está Johnny!",
+        emojis: "🪓🏨👯‍♀️❄️",
+        poster: "El+Resplandor",
+        testPregunta: "¿Qué palabra escribe Danny en la puerta repetidamente?",
+        testOpciones: ["A) DANGER", "B) REDRUM", "C) MURDER"],
+        testCorrecta: "B) REDRUM",
+        tabuPalabras: ["Hotel", "Locura", "Hacha", "Gemelas"]
+      },
+      {
+        titulo: "Gladiator",
+        año: "2000",
+        director: "Ridley Scott",
+        reparto: "Russell Crowe, Joaquin Phoenix",
+        frase: "Alcanzaré mi venganza, en esta vida o en la otra.",
+        emojis: "⚔️🛡️🏟️👍👎",
+        poster: "Gladiator",
+        testPregunta: "¿Cuál era el rango de Máximo en el ejército romano antes de ser traicionado?",
+        testOpciones: ["A) Centurión", "B) Senador", "C) General"],
+        testCorrecta: "C) General",
+        tabuPalabras: ["Roma", "Arena", "Coliseo", "Emperador"]
+      },
+      {
+        titulo: "Alien, el octavo pasajero",
+        año: "1979",
+        director: "Ridley Scott",
+        reparto: "Sigourney Weaver, John Hurt",
+        frase: "En el espacio, nadie puede oír tus gritos.",
+        emojis: "👽🚀🥚🐱",
+        poster: "Alien",
+        testPregunta: "¿Cómo se llama la nave espacial en la que viaja la tripulación?",
+        testOpciones: ["A) Nostromo", "B) Enterprise", "C) Halcón Milenario"],
+        testCorrecta: "A) Nostromo",
+        tabuPalabras: ["Nave", "Espacio", "Criatura", "Ripley"]
+      },
+      {
+        titulo: "Terminator 2: El juicio final",
+        año: "1991",
+        director: "James Cameron",
+        reparto: "Arnold Schwarzenegger, Linda Hamilton",
+        frase: "Hasta la vista, baby.",
+        emojis: "🤖🏍️👍🔥",
+        poster: "Terminator+2",
+        testPregunta: "¿De qué material está hecho el T-1000, el villano de la película?",
+        testOpciones: ["A) Titanio reforzado", "B) Metal líquido", "C) Acero indestructible"],
+        testCorrecta: "B) Metal líquido",
+        tabuPalabras: ["Cyborg", "Robot", "Futuro", "John Connor"]
+      },
+      {
+        titulo: "El Rey León",
+        año: "1994",
+        director: "Roger Allers, Rob Minkoff",
+        reparto: "Matthew Broderick, Jeremy Irons",
+        frase: "Hakuna Matata.",
+        emojis: "🦁🐗🐛🌅",
+        poster: "El+Rey+Leon",
+        testPregunta: "¿Cómo se llama el pájaro consejero del rey Mufasa?",
+        testOpciones: ["A) Zazu", "B) Rafiki", "C) Timón"],
+        testCorrecta: "A) Zazu",
+        tabuPalabras: ["Animales", "África", "Tío", "Mufasa"]
+      },
+      {
+        titulo: "Origen (Inception)",
+        año: "2010",
+        director: "Christopher Nolan",
+        reparto: "Leonardo DiCaprio, Joseph Gordon-Levitt",
+        frase: "¿Estás soñando o estás despierto?",
+        emojis: "😴🌀🏢🚄",
+        poster: "Origen",
+        testPregunta: "¿Qué objeto usa Dom Cobb (DiCaprio) como tótem para saber si está en un sueño?",
+        testOpciones: ["A) Un dado trucado", "B) Una peonza", "C) Un reloj de bolsillo"],
+        testCorrecta: "B) Una peonza",
+        tabuPalabras: ["Sueño", "Mente", "Inconsciente", "Despertar"]
+      },
+      {
+        titulo: "Avatar",
+        año: "2009",
+        director: "James Cameron",
+        reparto: "Sam Worthington, Zoe Saldana",
+        frase: "Te veo.",
+        emojis: "🔵🌳🚁🏹",
+        poster: "Avatar",
+        testPregunta: "¿Cómo se llama el mineral súper valioso que los humanos buscan en Pandora?",
+        testOpciones: ["A) Vibranium", "B) Unobtainium", "C) Adamantium"],
+        testCorrecta: "B) Unobtainium",
+        tabuPalabras: ["Azul", "Planeta", "Pandora", "Cuerpo"]
+      },
+      {
+        titulo: "E.T., el extraterrestre",
+        año: "1982",
+        director: "Steven Spielberg",
+        reparto: "Henry Thomas, Drew Barrymore",
+        frase: "E.T. mi casa, teléfono.",
+        emojis: "👽🚲🌕🍬",
+        poster: "ET",
+        testPregunta: "¿En qué se esconde E.T. para pasar desapercibido en la habitación de Elliott?",
+        testOpciones: ["A) Debajo de la cama", "B) En el armario de los juguetes", "C) Dentro de una maleta"],
+        testCorrecta: "B) En el armario de los juguetes",
+        tabuPalabras: ["Dedo", "Bicicleta", "Alienígena", "Amigo"]
+      },
+      {
+        titulo: "Indiana Jones en busca del arca perdida",
+        año: "1981",
+        director: "Steven Spielberg",
+        reparto: "Harrison Ford, Karen Allen",
+        frase: "No son los años, querida, es el rodaje.",
+        emojis: "🤠🐍🏺🪢",
+        poster: "Indiana+Jones",
+        testPregunta: "¿A qué animal le tiene fobia Indiana Jones?",
+        testOpciones: ["A) A las arañas", "B) A las serpientes", "C) A los murciélagos"],
+        testCorrecta: "B) A las serpientes",
+        tabuPalabras: ["Látigo", "Sombrero", "Arqueólogo", "Nazis"]
+      },
+      {
+        titulo: "El Caballero Oscuro",
+        año: "2008",
+        director: "Christopher Nolan",
+        reparto: "Christian Bale, Heath Ledger",
+        frase: "¿Por qué tan serio?",
+        emojis: "🦇🃏🪙🏥",
+        poster: "El+Caballero+Oscuro",
+        testPregunta: "¿A qué cargo político aspira Harvey Dent?",
+        testOpciones: ["A) Alcalde de Gotham", "B) Fiscal del Distrito", "C) Comisario de Policía"],
+        testCorrecta: "B) Fiscal del Distrito",
+        tabuPalabras: ["Batman", "Joker", "Gotham", "Payaso"]
+      },
+      {
+        titulo: "Cadena Perpetua",
+        año: "1994",
+        director: "Frank Darabont",
+        reparto: "Tim Robbins, Morgan Freeman",
+        frase: "Empeñarse en vivir, o empeñarse en morir.",
+        emojis: "⛓️🔨🌧️📖",
+        poster: "Cadena+Perpetua",
+        testPregunta: "¿Qué esconde Andy Dufresne detrás del póster de Rita Hayworth en su celda?",
+        testOpciones: ["A) Dinero", "B) Un agujero en la pared", "C) Drogas de contrabando"],
+        testCorrecta: "B) Un agujero en la pared",
+        tabuPalabras: ["Prisión", "Cárcel", "Fuga", "Inocente"]
+      },
+      {
+        titulo: "Pulp Fiction",
+        año: "1994",
+        director: "Quentin Tarantino",
+        reparto: "John Travolta, Uma Thurman",
+        frase: "Ezequiel 25:17...",
+        emojis: "🍔🔫💉🕺",
+        poster: "Pulp+Fiction",
+        testPregunta: "¿Qué premio ganan Mia Wallace y Vincent Vega en el concurso de baile?",
+        testOpciones: ["A) Un trofeo", "B) Un premio en efectivo", "C) Una cena gratis"],
+        testCorrecta: "A) Un trofeo",
+        tabuPalabras: ["Baile", "Maletín", "Tarantino", "Sicarios"]
+      },
+      // 10 NUEVAS PELÍCULAS
+      {
+        titulo: "Harry Potter y la Piedra Filosofal",
+        año: "2001",
+        director: "Chris Columbus",
+        reparto: "Daniel Radcliffe, Rupert Grint, Emma Watson",
+        frase: "Eres un mago, Harry.",
+        emojis: "⚡👓🪄🦉",
+        poster: "Harry+Potter",
+        testPregunta: "¿A qué casa de Hogwarts pertenece Draco Malfoy?",
+        testOpciones: ["A) Gryffindor", "B) Slytherin", "C) Ravenclaw"],
+        testCorrecta: "B) Slytherin",
+        tabuPalabras: ["Magia", "Varita", "Hogwarts", "Cicatriz"]
+      },
+      {
+        titulo: "El Rey del Show (The Greatest Showman)",
+        año: "2017",
+        director: "Michael Gracey",
+        reparto: "Hugh Jackman, Zac Efron, Zendaya",
+        frase: "El arte más noble es el de hacer felices a los demás.",
+        emojis: "🎪🎩🐘🎤",
+        poster: "The+Greatest+Showman",
+        testPregunta: "¿Qué tipo de espectáculo monta P.T. Barnum?",
+        testOpciones: ["A) Un circo", "B) Un teatro de Broadway", "C) Una ópera"],
+        testCorrecta: "A) Un circo",
+        tabuPalabras: ["Circo", "Musical", "Cantar", "Espectáculo"]
+      },
+      {
+        titulo: "Spider-Man: Un nuevo universo",
+        año: "2018",
+        director: "Bob Persichetti, Peter Ramsey, Rodney Rothman",
+        reparto: "Shameik Moore, Jake Johnson, Hailee Steinfeld",
+        frase: "Cualquiera puede llevar la máscara.",
+        emojis: "🕷️🕸️🎨🏙️",
+        poster: "Spider-Man+Into+The+Spider-Verse",
+        testPregunta: "¿Cuál es el nombre del protagonista principal de esta película animada?",
+        testOpciones: ["A) Peter Parker", "B) Miles Morales", "C) Miguel O'Hara"],
+        testCorrecta: "B) Miles Morales",
+        tabuPalabras: ["Araña", "Animación", "Multiverso", "Superhéroe"]
+      },
+      {
+        titulo: "Coco",
+        año: "2017",
+        director: "Lee Unkrich",
+        reparto: "Anthony Gonzalez, Gael García Bernal",
+        frase: "Recuérdame.",
+        emojis: "🎸💀🌼🐕",
+        poster: "Coco",
+        testPregunta: "¿Qué instrumento toca Ernesto de la Cruz?",
+        testOpciones: ["A) Trompeta", "B) Guitarra", "C) Violín"],
+        testCorrecta: "B) Guitarra",
+        tabuPalabras: ["Muertos", "México", "Música", "Abuela"]
+      },
+      {
+        titulo: "El Silencio de los Corderos",
+        año: "1991",
+        director: "Jonathan Demme",
+        reparto: "Jodie Foster, Anthony Hopkins",
+        frase: "Me comí su hígado con unas habas y un buen Chianti.",
+        emojis: "🦋🥩🚓🤫",
+        poster: "El+Silencio+de+los+Corderos",
+        testPregunta: "¿Qué insecto deja el asesino 'Buffalo Bill' en sus víctimas?",
+        testOpciones: ["A) Una mariposa nocturna", "B) Una araña viuda negra", "C) Un escarabajo sagrado"],
+        testCorrecta: "A) Una mariposa nocturna",
+        tabuPalabras: ["Caníbal", "Hannibal", "Asesino", "FBI"]
+      },
+      {
+        titulo: "Los Vengadores",
+        año: "2012",
+        director: "Joss Whedon",
+        reparto: "Robert Downey Jr., Chris Evans, Scarlett Johansson",
+        frase: "Tenemos un Hulk.",
+        emojis: "🛡️🔨🏹🇺🇸",
+        poster: "Los+Vengadores",
+        testPregunta: "¿Qué objeto cósmico roba Loki al principio de la película?",
+        testOpciones: ["A) El Éter", "B) El Teseracto", "C) El Orbe"],
+        testCorrecta: "B) El Teseracto",
+        tabuPalabras: ["Marvel", "Superhéroes", "Equipo", "Iron Man"]
+      },
+      {
+        titulo: "Buscando a Nemo",
+        año: "2003",
+        director: "Andrew Stanton",
+        reparto: "Albert Brooks, Ellen DeGeneres",
+        frase: "Sigue nadando.",
+        emojis: "🐠🐟🦈🦷",
+        poster: "Buscando+A+Nemo",
+        testPregunta: "¿En qué ciudad se encuentra la clínica del dentista?",
+        testOpciones: ["A) Sídney", "B) Melbourne", "C) Perth"],
+        testCorrecta: "A) Sídney",
+        tabuPalabras: ["Pez", "Océano", "Hijo", "Dory"]
+      },
+      {
+        titulo: "El Club de la Lucha",
+        año: "1999",
+        director: "David Fincher",
+        reparto: "Brad Pitt, Edward Norton",
+        frase: "La primera regla del Club de la Lucha es: Nadie habla sobre el Club de la Lucha.",
+        emojis: "🥊🧼🏢🤐",
+        poster: "El+Club+de+la+Lucha",
+        testPregunta: "¿De qué hace jabón Tyler Durden?",
+        testOpciones: ["A) De aceite de oliva", "B) De grasa humana", "C) De glicerina pura"],
+        testCorrecta: "B) De grasa humana",
+        tabuPalabras: ["Pelea", "Tyler", "Insomnio", "Reglas"]
+      },
+      {
+        titulo: "Joker",
+        año: "2019",
+        director: "Todd Phillips",
+        reparto: "Joaquin Phoenix, Robert De Niro",
+        frase: "Solía pensar que mi vida era una tragedia, pero ahora me doy cuenta de que es una comedia.",
+        emojis: "🤡🚬🚇🔫",
+        poster: "Joker",
+        testPregunta: "¿Cómo se llama el protagonista antes de convertirse en Joker?",
+        testOpciones: ["A) Jack Napier", "B) Arthur Fleck", "C) Joe Chill"],
+        testCorrecta: "B) Arthur Fleck",
+        tabuPalabras: ["Payaso", "Risa", "Enfermedad", "Gotham"]
+      },
+      {
+        titulo: "Mad Max: Furia en la carretera",
+        año: "2015",
+        director: "George Miller",
+        reparto: "Tom Hardy, Charlize Theron",
+        frase: "¡Sed testigos!",
+        emojis: "🚗🏜️🎸🔥",
+        poster: "Mad+Max+Fury+Road",
+        testPregunta: "¿Cómo se llama el villano principal que controla el agua?",
+        testOpciones: ["A) Immortan Joe", "B) Lord Humungus", "C) The Bullet Farmer"],
+        testCorrecta: "A) Immortan Joe",
+        tabuPalabras: ["Coches", "Desierto", "Agua", "Postapocalíptico"]
+      }
+    ];
+
+    // Mappings for Clues
+    const categories = {
+      1: { name: "Test (A, B o C)", icon: "fa-list-check", type: "public" },
+      2: { name: "Frase Célebre", icon: "fa-quote-right", type: "public" },
+      3: { name: "Batalla de Características", icon: "fa-bolt", type: "public" },
+      4: { name: "Mímica (En Secreto)", icon: "fa-person-rays", type: "secret" },
+      5: { name: "Emojis", icon: "fa-masks-theater", type: "public" },
+      6: { name: "Tabú (5 palabras)", icon: "fa-comment-slash", type: "secret" }
+    };
+
+    // Global State
+    let currentMovie = null;
+    let currentRoll = null;
+    let currentBattle = null;
+    let isRolling = false;
+
+    // Elements
+    const cube = document.getElementById('cube');
+    const rollBtn = document.getElementById('rollBtn');
+    const cardContainer = document.getElementById('cardContainer');
+    const idleState = document.getElementById('idleState');
+    const preClueState = document.getElementById('preClueState');
+    const clueState = document.getElementById('clueState');
+    const clueContentBox = document.getElementById('clueContentBox');
+    const revealBtnContainer = document.getElementById('revealBtnContainer');
+    
+    function rollDice() {
+      if (isRolling) return;
+      isRolling = true;
+      
+      // Select random face
+      const result = Math.floor(Math.random() * 6) + 1;
+      // Select random movie
+      currentMovie = movies[Math.floor(Math.random() * movies.length)];
+      currentRoll = result;
+
+      // Select random battle characteristic if needed
+      if (result === 3) {
+        currentBattle = battleCharacteristics[Math.floor(Math.random() * battleCharacteristics.length)];
+      }
+
+      // Update UI for rolling
+      rollBtn.disabled = true;
+      rollBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> La suerte está echada...';
+      rollBtn.classList.remove('bg-gold-500', 'hover:bg-gold-400', 'text-cinema-dark');
+      rollBtn.classList.add('bg-cinema-border', 'text-slate-400');
+      
+      cardContainer.classList.remove('opacity-100');
+      cardContainer.classList.add('opacity-50', 'pointer-events-none');
+      cardContainer.classList.remove('revealed');
+
+      // Trick to force reflow and animate even if the same face is rolled
+      cube.className = 'cube';
+      
+      setTimeout(() => {
+        cube.className = `cube show-${result}`;
+        
+        // Wait for CSS transition (1.2s)
+        setTimeout(() => {
+          handlePostRoll();
+          isRolling = false;
+          rollBtn.disabled = false;
+          rollBtn.innerHTML = '<i class="fa-solid fa-dice"></i> Tirar Dado (Otra vez)';
+          rollBtn.classList.add('bg-gold-500', 'hover:bg-gold-400', 'text-cinema-dark');
+          rollBtn.classList.remove('bg-cinema-border', 'text-slate-400');
+        }, 1200);
+      }, 50);
+    }
+
+    function handlePostRoll() {
+      idleState.classList.add('hidden');
+      
+      // Enable Card Interaction
+      cardContainer.classList.remove('opacity-50', 'pointer-events-none');
+      cardContainer.classList.add('opacity-100');
+
+      const categoryData = categories[currentRoll];
+
+      if (categoryData.type === 'secret') {
+        // Show Secret warning screen
+        clueState.classList.add('hidden');
+        clueState.classList.remove('flex');
+        preClueState.classList.remove('hidden');
+        preClueState.classList.add('flex');
+      } else {
+        // Direct to Clue
+        preClueState.classList.add('hidden');
+        preClueState.classList.remove('flex');
+        showClue();
+      }
+
+      prepareRevealCard();
+    }
+
+    function revealSecretClue() {
+        preClueState.classList.add('hidden');
+        preClueState.classList.remove('flex');
+        showClue();
+    }
+
+    function showClue() {
+      clueState.classList.remove('hidden');
+      clueState.classList.add('flex');
+
+      // Setup Header
+      const categoryData = categories[currentRoll];
+      document.getElementById('clueCategory').innerText = categoryData.name;
+      document.getElementById('clueIcon').innerHTML = `<i class="fa-solid ${categoryData.icon} text-3xl"></i>`;
+      
+      // Setup Content
+      let htmlContent = '';
+      revealBtnContainer.classList.remove('hidden'); // Ensure reveal button is visible by default
+
+      switch(currentRoll) {
+        case 1: // Test
+          htmlContent = `
+            <div class="text-center">
+                <p class="text-xl text-slate-200 font-bold mb-6">${currentMovie.testPregunta}</p>
+                <div class="flex flex-col gap-3 max-w-sm mx-auto text-left">
+                    <div class="bg-cinema-card border border-cinema-border p-3 rounded-lg text-slate-300 font-medium">${currentMovie.testOpciones[0]}</div>
+                    <div class="bg-cinema-card border border-cinema-border p-3 rounded-lg text-slate-300 font-medium">${currentMovie.testOpciones[1]}</div>
+                    <div class="bg-cinema-card border border-cinema-border p-3 rounded-lg text-slate-300 font-medium">${currentMovie.testOpciones[2]}</div>
+                </div>
+            </div>`;
+          break;
+        case 2: // Frase
+          htmlContent = `
+            <i class="fa-solid fa-quote-left absolute -top-3 -left-3 text-2xl text-slate-700"></i>
+            <p class="text-xl md:text-2xl text-slate-200 font-medium leading-relaxed italic text-center">"${currentMovie.frase}"</p>
+            <i class="fa-solid fa-quote-right absolute -bottom-3 -right-3 text-2xl text-slate-700"></i>`;
+          break;
+        case 3: // Batalla
+          htmlContent = `
+            <div class="text-center py-4">
+                <i class="fa-solid fa-swords text-4xl text-cinema-red mb-4"></i>
+                <p class="text-sm text-slate-400 uppercase tracking-widest mb-2">Tema de la batalla:</p>
+                <p class="text-2xl md:text-3xl text-gold-400 font-black uppercase">${currentBattle}</p>
+                <p class="mt-6 text-sm text-slate-300">Equipos o jugadores deben turnarse para decir una película con esta característica. El primero en fallar, repetir o quedarse en blanco, pierde.</p>
+            </div>`;
+            // Hide reveal button for battle, since there's no specific movie to reveal
+            revealBtnContainer.classList.add('hidden');
+          break;
+        case 4: // Mímica
+          htmlContent = `
+            <div class="text-center py-4">
+                <p class="text-sm text-slate-400 uppercase tracking-widest mb-2">Tu película es:</p>
+                <p class="text-3xl md:text-4xl text-gold-400 font-cinzel font-black uppercase mb-6">${currentMovie.titulo}</p>
+                <p class="text-sm text-slate-300 bg-cinema-card p-4 rounded-lg border border-cinema-border inline-block">¡Empieza a hacer mímica! El resto debe adivinarla.</p>
+            </div>`;
+          break;
+        case 5: // Emojis
+          htmlContent = `
+            <div class="text-center py-6">
+                <p class="text-5xl md:text-7xl tracking-widest">${currentMovie.emojis}</p>
+            </div>`;
+          break;
+        case 6: // Tabú
+          htmlContent = `
+            <div class="text-center">
+                <p class="text-sm text-slate-400 uppercase tracking-widest mb-1">Describe la película:</p>
+                <p class="text-2xl md:text-3xl text-gold-400 font-cinzel font-black uppercase mb-4">${currentMovie.titulo}</p>
+                
+                <div class="bg-cinema-red/10 border border-cinema-red/30 rounded-lg p-4 mt-6">
+                    <p class="text-cinema-red font-bold uppercase text-xs mb-3"><i class="fa-solid fa-triangle-exclamation"></i> Palabras Prohibidas (Tabú):</p>
+                    <div class="grid grid-cols-2 gap-2 text-slate-200 font-medium">
+                        <div class="bg-cinema-card py-1 px-2 rounded line-through decoration-cinema-red">${currentMovie.tabuPalabras[0]}</div>
+                        <div class="bg-cinema-card py-1 px-2 rounded line-through decoration-cinema-red">${currentMovie.tabuPalabras[1]}</div>
+                        <div class="bg-cinema-card py-1 px-2 rounded line-through decoration-cinema-red">${currentMovie.tabuPalabras[2]}</div>
+                        <div class="bg-cinema-card py-1 px-2 rounded line-through decoration-cinema-red">${currentMovie.tabuPalabras[3]}</div>
+                    </div>
+                </div>
+                <p class="mt-4 text-xs text-slate-400">Describe el título a tus compañeros usando máximo 5 palabras sin usar las prohibidas.</p>
+            </div>`;
+          break;
+      }
+      
+      clueContentBox.innerHTML = htmlContent;
+    }
+
+    function prepareRevealCard() {
+      // Si la categoría fue Batalla, modificamos la parte trasera para que no muestre una peli aleatoria
+      if(currentRoll === 3) {
+        document.getElementById('moviePoster').src = `https://placehold.co/600x900/131722/e50914?text=BATALLA`;
+        document.getElementById('movieTitle').innerText = "Fin de la Batalla";
+        document.getElementById('movieYear').innerText = "⚔️";
+        document.getElementById('movieDirector').querySelector('span').innerText = "Varios";
+        document.getElementById('movieCast').innerText = "-";
+        document.getElementById('movieEmojis').innerText = "-";
+        document.getElementById('movieQuote').innerText = "El ganador se lleva la gloria.";
+        document.getElementById('revealDetailsText').innerText = `Categoría jugada: ${currentBattle}`;
+      } else {
+        document.getElementById('moviePoster').src = `https://placehold.co/600x900/131722/ca8a04?text=${currentMovie.poster}`;
+        document.getElementById('movieTitle').innerText = currentMovie.titulo;
+        document.getElementById('movieYear').innerText = currentMovie.año;
+        document.getElementById('movieDirector').querySelector('span').innerText = currentMovie.director;
+        document.getElementById('movieCast').innerText = currentMovie.reparto;
+        document.getElementById('movieEmojis').innerText = currentMovie.emojis;
+        document.getElementById('movieQuote').innerText = `"${currentMovie.frase}"`;
+        
+        let detailsText = "";
+        if (currentRoll === 1) {
+            detailsText = `Respuesta Correcta: ${currentMovie.testCorrecta}`;
+        } else {
+            detailsText = `¡La respuesta correcta era ${currentMovie.titulo}!`;
+        }
+        document.getElementById('revealDetailsText').innerText = detailsText;
+      }
+    }
+
+    function revealMovie() {
+      cardContainer.classList.add('revealed');
+    }
+
+    function nextTurn() {
+      // Reset card flip
+      cardContainer.classList.remove('revealed');
+      
+      // Give time for flip animation before hiding contents
+      setTimeout(() => {
+        cardContainer.classList.remove('opacity-100');
+        cardContainer.classList.add('opacity-50', 'pointer-events-none');
+        
+        clueState.classList.add('hidden');
+        clueState.classList.remove('flex');
+        preClueState.classList.add('hidden');
+        preClueState.classList.remove('flex');
+        
+        idleState.classList.remove('hidden');
+        
+        // Reset dice
+        cube.className = 'cube show-1';
+        rollBtn.innerHTML = '<i class="fa-solid fa-dice"></i> Tirar Dado';
+        
+        currentMovie = null;
+        currentRoll = null;
+        currentBattle = null;
+      }, 500);
+    }
+
+  </script>
+</body>
+</html>
